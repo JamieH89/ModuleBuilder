@@ -18,7 +18,6 @@ Describe "ConvertToAst" {
         It "Has a Tokens property" {
             $ParseResult.Tokens | Should -BeOfType [System.Management.Automation.Language.Token]
         }
-
     }
 
     Context "It parses piped in commands" {

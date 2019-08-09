@@ -151,8 +151,19 @@ function Build-Module {
                 }
             }
 
-            # Push into the module source (it may be a subfolder)
-            $ModuleInfo = InitializeBuild $SourcePath
+            # Remove the SourcePath variable so Import-ParameterConfiguration will overwrite it
+            $BuildManifest = $SourcePath
+            $null = $MyInvocation.BoundParameters.Remove("SourcePath")
+            if (($ConfigurationFile = ResolveBuildManifest $SourcePath)) {
+                . Import-ParameterConfiguration -WorkingDirectory (Split-Path $ConfigurationFile) -FileName (Split-Path -Leaf $ConfigurationFile)
+            } else {
+                . Import-ParameterConfiguration -FileName "[Bb]uild.psd1"
+                $ConfigurationFile = ResolveBuildManifest $SourcePath
+            }
+            Write-Warning $($SourcePath.PSTypeNames -join "`n")
+            Write-Warning $($SourcePath -join " - ")
+            $ModuleManifest = ResolveModuleManifest (Split-Path $ConfigurationFile) $SourcePath
+            $ModuleInfo = GetModuleInfo $ModuleManifest
             Write-Progress "Building $($ModuleInfo.Name)" -Status "Use -Verbose for more information"
             Write-Verbose  "Building $($ModuleInfo.Name)"
 
@@ -194,31 +205,31 @@ function Build-Module {
             Write-Verbose "Copy files to $OutputDirectory"
             # Copy the files and folders which won't be processed
             Copy-Item *.psm1, *.psd1, *.ps1xml -Exclude "build.psd1" -Destination $OutputDirectory -Force
-            if ($ModuleInfo.CopyDirectories) {
-                Write-Verbose "Copy Entire Directories: $($ModuleInfo.CopyDirectories)"
-                Copy-Item -Path $ModuleInfo.CopyDirectories -Recurse -Destination $OutputDirectory -Force
+            if ($CopyDirectories) {
+                Write-Verbose "Copy Entire Directories: $($CopyDirectories)"
+                Copy-Item -Path $CopyDirectories -Recurse -Destination $OutputDirectory -Force
             }
 
             Write-Verbose "Combine scripts to $RootModule"
 
             # SilentlyContinue because there don't *HAVE* to be functions at all
-            $AllScripts = Get-ChildItem -Path @($ModuleInfo.SourceDirectories).ForEach{ Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
+            $AllScripts = Get-ChildItem -Path @($SourceDirectories).ForEach{ Join-Path $ModuleInfo.ModuleBase $_ } -Filter *.ps1 -Recurse -ErrorAction SilentlyContinue
 
             # We have to force the Encoding to string because PowerShell Core made up encodings
-            SetModuleContent -Source (@($ModuleInfo.Prefix) + $AllScripts.FullName + @($ModuleInfo.Suffix)).Where{$_} -Output $RootModule -Encoding "$($ModuleInfo.Encoding)"
+            SetModuleContent -Source (@($Prefix) + $AllScripts.FullName + @($Suffix)).Where{$_} -Output $RootModule -Encoding "$($Encoding)"
 
             # If there is a PublicFilter, update ExportedFunctions
-            if ($ModuleInfo.PublicFilter) {
+            if ($PublicFilter) {
                 # SilentlyContinue because there don't *HAVE* to be public functions
-                if (($PublicFunctions = Get-ChildItem $ModuleInfo.PublicFilter -Recurse -ErrorAction SilentlyContinue | Where-Object BaseName -in $AllScripts.BaseName | Select-Object -ExpandProperty BaseName)) {
+                if (($PublicFunctions = Get-ChildItem $PublicFilter -Recurse -ErrorAction SilentlyContinue | Where-Object BaseName -in $AllScripts.BaseName | Select-Object -ExpandProperty BaseName)) {
                     Update-Metadata -Path $OutputManifest -PropertyName FunctionsToExport -Value $PublicFunctions
                 }
             }
 
             $ParseResult = ConvertToAst $RootModule
-            $ParseResult | MoveUsingStatements -Encoding "$($ModuleInfo.Encoding)"
+            $ParseResult | MoveUsingStatements -Encoding "$($Encoding)"
 
-            if ($PublicFunctions -and -not $ModuleInfo.IgnoreAliasAttribute) {
+            if ($PublicFunctions -and -not $IgnoreAliasAttribute) {
                 if (($AliasesToExport = ($ParseResult | GetCommandAlias)[$PublicFunctions] | Select-Object -Unique)) {
                     Update-Metadata -Path $OutputManifest -PropertyName AliasesToExport -Value $AliasesToExport
                 }

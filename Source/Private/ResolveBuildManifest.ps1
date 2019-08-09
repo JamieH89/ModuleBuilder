@@ -1,4 +1,12 @@
 function ResolveBuildManifest {
+    <#
+        .SYNOPSIS
+            Finds the build.psd1 manifest in the specified location.
+        .DESCRIPTION
+            Normalizes a relative or absolute path to a folder or build.psd1,
+            and returns the full FileSystem path to the manifest file, if it exists.
+
+    #>
     [CmdletBinding()]
     param(
         # The Source folder path, the Build Manifest Path, or the Module Manifest path used to resolve the Build.psd1
@@ -17,12 +25,5 @@ function ResolveBuildManifest {
     }
 
     # Make sure we are resolving the absolute path to the manifest, and test it exists
-    $ResolvedBuildManifest = (Resolve-Path $BuildManifest -ErrorAction SilentlyContinue).Path
-
-    if (-Not ($ResolvedBuildManifest)) {
-        throw "Couldn't resolve the Build Manifest at $BuildManifest"
-    } else {
-        $ResolvedBuildManifest
-    }
-
+    (Resolve-Path $BuildManifest -ErrorAction SilentlyContinue).Path
 }
