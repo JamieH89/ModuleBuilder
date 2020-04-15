@@ -36,10 +36,10 @@ stages:
       TestsDirectory: '$(Build.SourcesDirectory)/Tests'
       strategy:
         matrix:
-          Linux:
-            vmImage: 'ubuntu-16.04'
-          MacOS:
-            vmImage: 'macOS-10.14'
+          # Linux:
+          #   vmImage: 'ubuntu-16.04'
+          # MacOS:
+          #   vmImage: 'macOS-10.14'
           Windows:
             vmImage: 'windows-2019'
       pool:
