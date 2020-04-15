@@ -45,3 +45,21 @@ stages:
       pool:
         vmImage: $(vmImage)
 
+- stage: Deployment
+  dependsOn: Test
+  jobs:
+    - deployment: DeployWeb
+      displayName: deploy Web App
+      #pool:
+      #  vmImage: 'Windows-2019'
+      # creates an environment if it doesn't exist
+      environment: 'WindowsLab'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - download: current
+              artifact: $(ArtifactName)
+            - powershell: |
+                Get-ChildItem $(Pipeline.Workspace)
+                # Invoke-Deployment ... something
